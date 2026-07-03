@@ -48,6 +48,10 @@ export function createUser(input: CreateUserInput): User {
   return user;
 }
 
+function countAdmins(users: User[]): number {
+  return users.filter((u) => u.role === "admin").length;
+}
+
 export function updateUser(
   id: string,
   patch: Partial<Pick<User, "name" | "email" | "role" | "password">>
@@ -55,6 +59,7 @@ export function updateUser(
   const users = listUsers();
   const index = users.findIndex((u) => u.id === id);
   if (index === -1) return undefined;
+  const current = users[index];
 
   if (
     patch.email &&
@@ -65,7 +70,18 @@ export function updateUser(
     throw new Error("Email này đã được sử dụng.");
   }
 
-  const updated = { ...users[index], ...patch };
+  if (patch.role && patch.role !== current.role) {
+    if (current.role === "teacher" && isUserAssignedAsTeacher(id)) {
+      throw new Error(
+        "Vui lòng phân công lại hoặc xóa các khóa học của giảng viên này trước khi đổi vai trò."
+      );
+    }
+    if (current.role === "admin" && countAdmins(users) <= 1) {
+      throw new Error("Không thể đổi vai trò của quản trị viên cuối cùng.");
+    }
+  }
+
+  const updated = { ...current, ...patch };
   users[index] = updated;
   writeCollection(STORAGE_KEYS.users, users);
   return updated;
@@ -79,6 +95,10 @@ export function deleteUser(id: string): void {
     throw new Error(
       "Vui lòng phân công lại hoặc xóa các khóa học của giảng viên này trước khi xóa tài khoản."
     );
+  }
+
+  if (user.role === "admin" && countAdmins(listUsers()) <= 1) {
+    throw new Error("Không thể xóa quản trị viên cuối cùng.");
   }
 
   writeCollection(

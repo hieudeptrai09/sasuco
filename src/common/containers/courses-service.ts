@@ -1,7 +1,7 @@
 import type { Course } from "../types/course";
 import { STORAGE_KEYS } from "../constants/storage-keys";
 import { generateId, readCollection, writeCollection } from "./storage";
-import { deleteEnrollmentsForCourse } from "./enrollments-service";
+import { countActiveEnrollments, deleteEnrollmentsForCourse } from "./enrollments-service";
 
 export type CourseInput = Omit<Course, "id" | "createdAt">;
 
@@ -38,6 +38,11 @@ export function updateCourse(
   const courses = listCourses();
   const index = courses.findIndex((c) => c.id === id);
   if (index === -1) return undefined;
+
+  if (patch.capacity !== undefined && patch.capacity < countActiveEnrollments(id)) {
+    throw new Error("Sĩ số tối đa không được nhỏ hơn số học viên đang đăng ký.");
+  }
+
   const updated = { ...courses[index], ...patch };
   courses[index] = updated;
   writeCollection(STORAGE_KEYS.courses, courses);

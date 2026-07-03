@@ -59,13 +59,17 @@ export function CourseManager() {
       capacity,
       teacherId: form.teacherId || null,
     };
-    if (form.id) {
-      updateCourse(form.id, payload);
-    } else {
-      createCourse(payload);
+    try {
+      if (form.id) {
+        updateCourse(form.id, payload);
+      } else {
+        createCourse(payload);
+      }
+      setForm(EMPTY_FORM);
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể lưu khóa học.");
     }
-    setForm(EMPTY_FORM);
-    refresh();
   }
 
   function handleEdit(course: Course) {
