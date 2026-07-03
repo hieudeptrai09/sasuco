@@ -12,6 +12,7 @@ const NAV_LINKS: Record<Role, { href: string; label: string }[]> = {
     { href: "/admin", label: "Tổng quan" },
     { href: "/admin/users", label: "Người dùng" },
     { href: "/admin/courses", label: "Khóa học" },
+    { href: "/admin/rooms", label: "Phòng học" },
   ],
   manager: [
     { href: "/manager", label: "Tổng quan" },

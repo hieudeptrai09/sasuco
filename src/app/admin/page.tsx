@@ -24,6 +24,14 @@ export default function AdminOverviewPage() {
             </p>
           </Card>
         </Link>
+        <Link href="/admin/rooms">
+          <Card className="transition-colors hover:bg-black/[.02] dark:hover:bg-white/[.04]">
+            <h2 className="font-medium text-zinc-950 dark:text-zinc-50">Quản lý phòng học</h2>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              Tạo và chỉnh sửa danh sách phòng học dùng để xếp lịch khóa học.
+            </p>
+          </Card>
+        </Link>
       </div>
     </div>
   );

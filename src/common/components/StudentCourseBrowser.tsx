@@ -11,6 +11,7 @@ import {
   registerForCourse,
 } from "../containers/enrollments-service";
 import { listUsers } from "../containers/users-service";
+import { formatSchedule } from "../containers/schedule";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 
@@ -73,7 +74,9 @@ export function StudentCourseBrowser() {
               >
                 <div>
                   <p className="font-medium text-zinc-950 dark:text-zinc-50">{course.title}</p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">{course.schedule}</p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    {formatSchedule(course.schedule)}
+                  </p>
                 </div>
                 <Button variant="danger" onClick={() => handleDrop(course.id)}>
                   Hủy đăng ký
@@ -103,7 +106,7 @@ export function StudentCourseBrowser() {
                   <p className="font-medium text-zinc-950 dark:text-zinc-50">{course.title}</p>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">{course.description}</p>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    {course.schedule} · Giảng viên:{" "}
+                    {formatSchedule(course.schedule)} · Giảng viên:{" "}
                     {course.teacherId ? teacherNames[course.teacherId] ?? "Chưa phân công" : "Chưa phân công"} ·{" "}
                     {activeCount}/{course.capacity} đã đăng ký
                   </p>

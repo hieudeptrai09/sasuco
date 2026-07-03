@@ -2,6 +2,7 @@ import type { Course } from "../types/course";
 import type { Enrollment } from "../types/enrollment";
 import { STORAGE_KEYS } from "../constants/storage-keys";
 import { generateId, readCollection, writeCollection } from "./storage";
+import { schedulesOverlap } from "./schedule";
 
 type RegisterResult = { ok: true } | { ok: false; error: string };
 
@@ -49,6 +50,20 @@ export function registerForCourse(
   ).length;
   if (activeCount >= course.capacity) {
     return { ok: false, error: "Khóa học đã đầy." };
+  }
+
+  const courses = readCourses();
+  const otherActiveCourseIds = enrollments
+    .filter((e) => e.studentId === studentId && e.status === "active" && e.courseId !== courseId)
+    .map((e) => e.courseId);
+  const conflict = courses.find(
+    (c) => otherActiveCourseIds.includes(c.id) && schedulesOverlap(c.schedule, course.schedule)
+  );
+  if (conflict) {
+    return {
+      ok: false,
+      error: `Lịch học trùng với khóa học "${conflict.title}" bạn đã đăng ký.`,
+    };
   }
 
   if (existing) {

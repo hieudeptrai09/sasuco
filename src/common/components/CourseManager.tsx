@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import type { Course } from "../types/course";
+import type { Course, DayOfWeek } from "../types/course";
 import type { User } from "../types/user";
+import { DAYS_OF_WEEK, DAY_LABELS } from "../constants/days";
 import { listUsers } from "../containers/users-service";
 import { createCourse, deleteCourse, listCourses, updateCourse } from "../containers/courses-service";
+import { listRooms } from "../containers/rooms-service";
 import { countActiveEnrollments } from "../containers/enrollments-service";
+import { formatSchedule } from "../containers/schedule";
+import type { Room } from "../types/room";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { Select } from "./ui/Select";
@@ -15,23 +19,30 @@ interface CourseFormState {
   id: string | null;
   title: string;
   description: string;
-  schedule: string;
+  days: DayOfWeek[];
+  startTime: string;
+  endTime: string;
   capacity: string;
   teacherId: string;
+  roomId: string;
 }
 
 const EMPTY_FORM: CourseFormState = {
   id: null,
   title: "",
   description: "",
-  schedule: "",
+  days: [],
+  startTime: "",
+  endTime: "",
   capacity: "20",
   teacherId: "",
+  roomId: "",
 };
 
 export function CourseManager() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [form, setForm] = useState<CourseFormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +53,16 @@ export function CourseManager() {
   function refresh() {
     setCourses(listCourses());
     setTeachers(listUsers().filter((u) => u.role === "teacher"));
+    setRooms(listRooms());
+  }
+
+  function toggleDay(day: DayOfWeek) {
+    setForm((prev) => ({
+      ...prev,
+      days: prev.days.includes(day)
+        ? prev.days.filter((d) => d !== day)
+        : [...prev.days, day],
+    }));
   }
 
   function handleSubmit(event: FormEvent) {
@@ -52,12 +73,21 @@ export function CourseManager() {
       setError("Sĩ số phải là một số dương.");
       return;
     }
+    if (form.days.length === 0) {
+      setError("Vui lòng chọn ít nhất một ngày học.");
+      return;
+    }
+    if (!form.startTime || !form.endTime || form.startTime >= form.endTime) {
+      setError("Giờ kết thúc phải sau giờ bắt đầu.");
+      return;
+    }
     const payload = {
       title: form.title,
       description: form.description,
-      schedule: form.schedule,
+      schedule: { days: form.days, startTime: form.startTime, endTime: form.endTime },
       capacity,
       teacherId: form.teacherId || null,
+      roomId: form.roomId || null,
     };
     try {
       if (form.id) {
@@ -77,9 +107,12 @@ export function CourseManager() {
       id: course.id,
       title: course.title,
       description: course.description,
-      schedule: course.schedule,
+      days: course.schedule.days,
+      startTime: course.schedule.startTime,
+      endTime: course.schedule.endTime,
       capacity: String(course.capacity),
       teacherId: course.teacherId ?? "",
+      roomId: course.roomId ?? "",
     });
   }
 
@@ -103,6 +136,11 @@ export function CourseManager() {
     return teachers.find((t) => t.id === teacherId)?.name ?? "Chưa phân công";
   }
 
+  function roomName(roomId: string | null) {
+    if (!roomId) return "Chưa xếp phòng";
+    return rooms.find((r) => r.id === roomId)?.name ?? "Chưa xếp phòng";
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <Card>
@@ -118,20 +156,48 @@ export function CourseManager() {
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-600 dark:text-zinc-400">Lịch học</label>
-            <Input
-              required
-              value={form.schedule}
-              onChange={(e) => setForm({ ...form, schedule: e.target.value })}
-            />
-          </div>
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <label className="text-sm text-zinc-600 dark:text-zinc-400">Mô tả</label>
             <Input
               required
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <label className="text-sm text-zinc-600 dark:text-zinc-400">Ngày học</label>
+            <div className="flex flex-wrap gap-3">
+              {DAYS_OF_WEEK.map((day) => (
+                <label
+                  key={day}
+                  className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-400"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.days.includes(day)}
+                    onChange={() => toggleDay(day)}
+                  />
+                  {DAY_LABELS[day]}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm text-zinc-600 dark:text-zinc-400">Giờ bắt đầu</label>
+            <Input
+              type="time"
+              required
+              value={form.startTime}
+              onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm text-zinc-600 dark:text-zinc-400">Giờ kết thúc</label>
+            <Input
+              type="time"
+              required
+              value={form.endTime}
+              onChange={(e) => setForm({ ...form, endTime: e.target.value })}
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -154,6 +220,20 @@ export function CourseManager() {
               {teachers.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm text-zinc-600 dark:text-zinc-400">Phòng học</label>
+            <Select
+              value={form.roomId}
+              onChange={(e) => setForm({ ...form, roomId: e.target.value })}
+            >
+              <option value="">Chưa xếp phòng</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
                 </option>
               ))}
             </Select>
@@ -193,7 +273,8 @@ export function CourseManager() {
               </div>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">{course.description}</p>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                {course.schedule} · Giảng viên: {teacherName(course.teacherId)} ·{" "}
+                {formatSchedule(course.schedule)} · Giảng viên: {teacherName(course.teacherId)} ·{" "}
+                Phòng: {roomName(course.roomId)} ·{" "}
                 {countActiveEnrollments(course.id)}/{course.capacity} đã đăng ký
               </p>
             </div>
